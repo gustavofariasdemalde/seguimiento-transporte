@@ -1,0 +1,46 @@
+body.inicio-bg {
+  background: #ffd600;
+  min-height: 100vh;
+  margin: 0;
+  font-family: Arial, sans-serif;
+}
+.container {
+  text-align: center;
+  margin-top: 10vh;
+}
+h1 {
+  font-size: 3em;
+  font-weight: bold;
+  margin-bottom: 0.5em;
+}
+h2 {
+  font-size: 2em;
+  font-weight: bold;
+  margin-bottom: 2em;
+}
+button {
+  background: #8bb3dd;
+  color: #fff;
+  border: none;
+  padding: 1em 2em;
+  font-size: 1.5em;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+button:hover {
+  background: #6a9edb;
+}
+#map {
+  width: 90vw;
+  height: 60vh;
+  margin: 2em auto;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+}
+.seguimiento-btns {
+  display: flex;
+  justify-content: center;
+  gap: 2em;
+  margin-top: 2em;
+} 
