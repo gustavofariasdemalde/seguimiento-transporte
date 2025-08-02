@@ -1,0 +1,56 @@
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Menú Principal</title>
+  <style>
+    body {
+      background: #ffd600;
+      min-height: 100vh;
+      margin: 0;
+      font-family: Arial, sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+    .menu-container {
+      text-align: center;
+      background: #fffbe6;
+      padding: 2em;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    }
+    .menu-btns {
+      display: flex;
+      flex-direction: column;
+      gap: 1.5em;
+      margin-top: 2em;
+    }
+    button {
+      background: #8bb3dd;
+      color: #fff;
+      border: none;
+      padding: 1em 2em;
+      font-size: 1.5em;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    button:hover {
+      background: #6a9edb;
+    }
+  </style>
+</head>
+<body>
+  <div class="menu-container">
+    <h2>Menú Principal</h2>
+    <div class="menu-btns">
+      <button onclick="window.location.href='seguimiento.html'">SEGUIMIENTO ACTUAL</button>
+      <button onclick="window.location.href='unidades.html'">ASIGNAR UNIDAD A LINEA</button>
+      <button onclick="window.location.href='reporte.html'">REPORTE DE UNIDADES</button>
+      <button onclick="window.location.href='index.html'">VOLVER AL INICIO</button>
+    </div>
+  </div>
+</body>
+</html>

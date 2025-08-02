@@ -1,12 +1,14 @@
+
 let map;
 let marker;
 let seguimientoActivo = false;
 
-const IMEI = "6721085508150008"; // Usa el IMEI correcto
+// Usa el IMEI correcto de tu GPS
+const IMEI = "0352672108550815";
 
 function initMap() {
   // Centra el mapa en Rafaela, Santa Fe, Argentina
-  map = L.map('map').setView([-31.2608, -61.4751], 13);
+  map = L.map('map').setView([-31.2608, -61.4751], 15);
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     maxZoom: 19,
     attribution: '© OpenStreetMap contributors'
@@ -17,36 +19,22 @@ function actualizarUbicacion() {
   fetch(`/api/location/${IMEI}`)
     .then(res => res.json())
     .then(data => {
-      console.log('Ubicación recibida:', data);
       if (data.lat && data.lng) {
-        // Forzar hemisferio sur y oeste para Rafaela
-        const lat = -Math.abs(data.lat);
-        const lng = -Math.abs(data.lng);
-
         if (!marker) {
-          marker = L.marker([lat, lng]).addTo(map)
-            .bindPopup("Última ubicación GPS").openPopup();
+          marker = L.marker([data.lat, data.lng]).addTo(map)
+            .bindPopup("LINEA 1- COCHE 1").openPopup();
         } else {
-          marker.setLatLng([lat, lng]);
+          marker.setLatLng([data.lat, data.lng]);
         }
-        map.setView([lat, lng], 16);
+        map.setView([data.lat, data.lng], 16);
       }
     })
-    .catch(() => {
-      // Silenciar error
-    });
-}
-
-function iniciarSeguimiento() {
-  if (!seguimientoActivo) {
-    seguimientoActivo = true;
-    actualizarUbicacion();
-    setInterval(actualizarUbicacion, 5000); // Actualiza cada 5 segundos
-  }
+    .catch(() => {/* Silenciar error */});
 }
 
 document.addEventListener('DOMContentLoaded', () => {
   initMap();
-  document.getElementById('iniciarSeguimiento').onclick = iniciarSeguimiento;
-  document.getElementById('volver').onclick = () => window.location.href = 'index.html';
+  actualizarUbicacion(); // Inicia el seguimiento automáticamente
+  setInterval(actualizarUbicacion, 5000); // Actualiza cada 5 segundos
+  document.getElementById('volver').onclick = () => window.location.href = 'menu.html';
 });

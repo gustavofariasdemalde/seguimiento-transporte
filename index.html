@@ -1,21 +1,62 @@
+
 <!DOCTYPE html>
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Municipalidad de Rafaela - Transporte Público</title>
-  <link rel="stylesheet" href="styles.css">
+  <title>TRANSPORTE PÚBLICO MUNICIPALIDAD DE RAFAELA</title>
+  <style>
+    body {
+      background: #ffd600;
+      min-height: 100vh;
+      margin: 0;
+      font-family: Arial, sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+    .login-container {
+      background: #fffbe6;
+      padding: 2em;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+      text-align: center;
+    }
+    input, button {
+      margin: 1em 0;
+      padding: 0.7em;
+      font-size: 1.2em;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+      width: 90%;
+    }
+    button {
+      background: #ffd600;
+      color: #333;
+      border: none;
+      cursor: pointer;
+      font-weight: bold;
+    }
+    button:hover {
+      background: #ffe066;
+    }
+  </style>
 </head>
-<body class="inicio-bg">
-  <div class="container">
-    <h1>MUNICIPALIDAD DE RAFAELA</h1>
-    <h2>Transporte Público</h2>
-    <button id="iniciarSesion">Iniciar Sesión</button>
+<body>
+  <div class="login-container">
+    <h2>TRANSPORTE PÚBLICO MUNICIPALIDAD DE RAFAELA</h2>
+    <input type="password" id="clave" placeholder="Clave" required>
+    <button onclick="login()">Ingresar</button>
+    <div id="error" style="color:red;"></div>
   </div>
   <script>
-    document.getElementById('iniciarSesion').onclick = function() {
-      window.location.href = 'seguimiento.html';
-    };
+    function login() {
+      const clave = document.getElementById('clave').value;
+      if (clave === "administrador") {
+        window.location.href = "menu.html";
+      } else {
+        document.getElementById('error').textContent = "Clave incorrecta";
+      }
+    }
   </script>
 </body>
-</html> 
+</html>

@@ -1,0 +1,217 @@
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>ASIGNACION DE UNIDAD POR LINEA</title>
+  <style>
+    body {
+      background: #ffd600;
+      min-height: 100vh;
+      margin: 0;
+      font-family: Arial, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    h2 {
+      margin-top: 2vh;
+      font-size: 2em;
+      font-weight: bold;
+      text-align: center;
+    }
+    .fecha-hoy {
+      background: #fffbe6;
+      border-radius: 8px;
+      padding: 0.7em 2em;
+      margin: 1em 0 2em 0;
+      font-size: 1.2em;
+      display: inline-block;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+    .grid-form {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      grid-template-rows: repeat(2, auto);
+      gap: 2em;
+      width: 90vw;
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+    .form-linea {
+      background: #fffbe6;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+      padding: 1.5em 1em;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-width: 220px;
+    }
+    .form-linea h3 {
+      margin: 0 0 1em 0;
+      font-size: 1.3em;
+      color: #333;
+    }
+    .servicio {
+      margin-bottom: 1em;
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+    }
+    .servicio label {
+      font-weight: bold;
+      margin-bottom: 0.3em;
+    }
+    .servicio input {
+      width: 80px;
+      padding: 0.4em;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+      font-size: 1em;
+      margin-bottom: 0.2em;
+    }
+    .error {
+      color: red;
+      font-size: 0.95em;
+      min-height: 1.2em;
+    }
+    @media (max-width: 900px) {
+      .grid-form {
+        grid-template-columns: 1fr 1fr;
+        grid-template-rows: repeat(3, auto);
+      }
+    }
+    @media (max-width: 600px) {
+      .grid-form {
+        grid-template-columns: 1fr;
+        grid-template-rows: repeat(5, auto);
+      }
+    }
+  </style>
+</head>
+<body>
+  <h2>ASIGNACION DE UNIDAD POR LINEA</h2>
+  <div class="fecha-hoy" id="fechaHoy"></div>
+  <form class="grid-form" id="asignacionForm" autocomplete="off">
+    <!-- Línea 1 -->
+    <div class="form-linea">
+      <h3>LINEA 1</h3>
+      <div class="servicio">
+        <label for="l1s1">PRIMER SERVICIO</label>
+        <input type="number" id="l1s1" min="1" max="50" required>
+        <div class="error" id="err-l1s1"></div>
+      </div>
+      <div class="servicio">
+        <label for="l1s2">SEGUNDO SERVICIO</label>
+        <input type="number" id="l1s2" min="1" max="50" required>
+        <div class="error" id="err-l1s2"></div>
+      </div>
+      <div class="servicio">
+        <label for="l1s3">TERCER SERVICIO</label>
+        <input type="number" id="l1s3" min="1" max="50" required>
+        <div class="error" id="err-l1s3"></div>
+      </div>
+    </div>
+    <!-- Línea 2 -->
+    <div class="form-linea">
+      <h3>LINEA 2</h3>
+      <div class="servicio">
+        <label for="l2s1">PRIMER SERVICIO</label>
+        <input type="number" id="l2s1" min="1" max="50" required>
+        <div class="error" id="err-l2s1"></div>
+      </div>
+      <div class="servicio">
+        <label for="l2s2">SEGUNDO SERVICIO</label>
+        <input type="number" id="l2s2" min="1" max="50" required>
+        <div class="error" id="err-l2s2"></div>
+      </div>
+      <div class="servicio">
+        <label for="l2s3">TERCER SERVICIO</label>
+        <input type="number" id="l2s3" min="1" max="50" required>
+        <div class="error" id="err-l2s3"></div>
+      </div>
+    </div>
+    <!-- Línea 3 -->
+    <div class="form-linea">
+      <h3>LINEA 3</h3>
+      <div class="servicio">
+        <label for="l3s1">PRIMER SERVICIO</label>
+        <input type="number" id="l3s1" min="1" max="50" required>
+        <div class="error" id="err-l3s1"></div>
+      </div>
+      <div class="servicio">
+        <label for="l3s2">SEGUNDO SERVICIO</label>
+        <input type="number" id="l3s2" min="1" max="50" required>
+        <div class="error" id="err-l3s2"></div>
+      </div>
+      <div class="servicio">
+        <label for="l3s3">TERCER SERVICIO</label>
+        <input type="number" id="l3s3" min="1" max="50" required>
+        <div class="error" id="err-l3s3"></div>
+      </div>
+    </div>
+    <!-- Línea 4 -->
+    <div class="form-linea">
+      <h3>LINEA 4</h3>
+      <div class="servicio">
+        <label for="l4s1">PRIMER SERVICIO</label>
+        <input type="number" id="l4s1" min="1" max="50" required>
+        <div class="error" id="err-l4s1"></div>
+      </div>
+      <div class="servicio">
+        <label for="l4s2">SEGUNDO SERVICIO</label>
+        <input type="number" id="l4s2" min="1" max="50" required>
+        <div class="error" id="err-l4s2"></div>
+      </div>
+    </div>
+    <!-- Línea 5 -->
+    <div class="form-linea">
+      <h3>LINEA 5</h3>
+      <div class="servicio">
+        <label for="l5s1">PRIMER SERVICIO</label>
+        <input type="number" id="l5s1" min="1" max="50" required>
+        <div class="error" id="err-l5s1"></div>
+      </div>
+      <div class="servicio">
+        <label for="l5s2">SEGUNDO SERVICIO</label>
+        <input type="number" id="l5s2" min="1" max="50" required>
+        <div class="error" id="err-l5s2"></div>
+      </div>
+    </div>
+  </form>
+  <script>
+    // Mostrar fecha y hora actual
+    function actualizarFecha() {
+      const fecha = new Date();
+      const opciones = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+      document.getElementById('fechaHoy').textContent =
+        fecha.toLocaleDateString('es-AR', opciones) + " - " +
+        fecha.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
+    }
+    actualizarFecha();
+    setInterval(actualizarFecha, 60000);
+
+    // Validación de inputs
+    const servicios = [
+      'l1s1','l1s2','l1s3',
+      'l2s1','l2s2','l2s3',
+      'l3s1','l3s2','l3s3',
+      'l4s1','l4s2',
+      'l5s1','l5s2'
+    ];
+    servicios.forEach(id => {
+      document.getElementById(id).addEventListener('input', function() {
+        const val = parseInt(this.value, 10);
+        const errorDiv = document.getElementById('err-' + id);
+        if (isNaN(val) || val < 1 || val > 50) {
+          errorDiv.textContent = "El número debe ser entre 01 y 50";
+        } else {
+          errorDiv.textContent = "";
+        }
+      });
+    });
+  </script>
+</body>
+</html>
