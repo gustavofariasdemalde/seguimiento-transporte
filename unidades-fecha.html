@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Unidades Asignadas por Fecha</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f4f6f8;
+      margin: 0;
+      padding: 2em;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    h1 {
+      text-align: center;
+      color: #2c3e50;
+      margin-bottom: 1em;
+    }
+
+    .fecha-selector {
+      background: white;
+      padding: 1.5em;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      margin-bottom: 2em;
+      text-align: center;
+    }
+
+    .fecha-selector label {
+      font-size: 1.2em;
+      font-weight: bold;
+      margin-right: 1em;
+      color: #2c3e50;
+    }
+
+    .fecha-selector input {
+      padding: 0.7em;
+      font-size: 1.1em;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+      margin-right: 1em;
+    }
+
+    .fecha-selector button {
+      padding: 0.7em 1.5em;
+      background: #2980b9;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 1.1em;
+      transition: background 0.2s;
+    }
+
+    .fecha-selector button:hover {
+      background: #1f5f8b;
+    }
+
+    table {
+      border-collapse: collapse;
+      width: 90%;
+      max-width: 1200px;
+      background: white;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      border-radius: 12px;
+      overflow: hidden;
+      margin-bottom: 2em;
+    }
+
+    th, td {
+      padding: 1em;
+      text-align: center;
+    }
+
+    th {
+      background-color: #2980b9;
+      color: white;
+      font-size: 1.1em;
+    }
+
+    tr:nth-child(even) {
+      background-color: #f2f2f2;
+    }
+
+    tr:hover {
+      background-color: #eaf2f8;
+    }
+
+    .no-data {
+      text-align: center;
+      color: #7f8c8d;
+      font-style: italic;
+      padding: 2em;
+    }
+
+    .back-button {
+      background: #8bb3dd;
+      color: #fff;
+      border: none;
+      padding: 1em 2em;
+      font-size: 1.2em;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background 0.2s;
+      margin-top: 1em;
+    }
+
+    .back-button:hover {
+      background: #6a9edb;
+    }
+
+    .stats {
+      display: flex;
+      gap: 2em;
+      margin-bottom: 2em;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .stat-card {
+      background: white;
+      padding: 1.5em;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      text-align: center;
+      min-width: 150px;
+    }
+
+    .stat-number {
+      font-size: 2em;
+      font-weight: bold;
+      color: #2980b9;
+    }
+
+    .stat-label {
+      color: #7f8c8d;
+      margin-top: 0.5em;
+    }
+  </style>
+</head>
+<body>
+  <h1>Consulta de unidades asignada por fecha</h1>
+  
+  <div class="fecha-selector">
+    <label for="fechaSelector">Seleccionar Fecha:</label>
+    <input type="date" id="fechaSelector">
+  </div>
+
+  <div class="stats" id="statsContainer">
+    <!-- Estadísticas dinámicas -->
+  </div>
+
+  <table id="tablaAsignaciones">
+    <thead>
+      <tr>
+        <th>Fecha</th>
+        <th>Línea</th>
+        <th>Servicio</th>
+        <th>Coche</th>
+        <th>Hora de Asignación</th>
+      </tr>
+    </thead>
+    <tbody>
+      <!-- Contenido dinámico -->
+    </tbody>
+  </table>
+
+  <button class="back-button" onclick="window.location.href='menu.html'">Volver al Menú</button>
+
+  <script>
+    // Establecer fecha actual por defecto
+    document.getElementById('fechaSelector').value = new Date().toISOString().split('T')[0];
+
+    function cargarDatos(fechaFiltro = null) {
+      const datos = JSON.parse(localStorage.getItem('asignaciones')) || [];
+      const tbody = document.querySelector("#tablaAsignaciones tbody");
+      const statsContainer = document.getElementById('statsContainer');
+      
+      tbody.innerHTML = ''; // Limpiar tabla
+      
+      // Filtrar datos por fecha si se especifica
+      let datosFiltrados = datos;
+      if (fechaFiltro) {
+        datosFiltrados = datos.filter(item => item.fecha === fechaFiltro);
+      }
+      
+      // Calcular estadísticas - solo Líneas Activas
+      const lineasUnicas = new Set(datosFiltrados.map(item => item.linea)).size;
+      
+      // Mostrar estadísticas - solo Líneas Activas
+      statsContainer.innerHTML = `
+        <div class="stat-card">
+          <div class="stat-number">${lineasUnicas}</div>
+          <div class="stat-label">Líneas Activas</div>
+        </div>
+      `;
+      
+      if (datosFiltrados.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" class="no-data">No hay asignaciones para la fecha seleccionada</td></tr>';
+        return;
+      }
+      
+      // Ordenar por fecha y hora
+      datosFiltrados.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+      
+      // Mostrar solo los 12 servicios específicos
+      const serviciosEspecificos = [
+        { linea: 'Línea 1', servicio: 's1' },
+        { linea: 'Línea 1', servicio: 's2' },
+        { linea: 'Línea 1', servicio: 's3' },
+        { linea: 'Línea 2', servicio: 's1' },
+        { linea: 'Línea 2', servicio: 's2' },
+        { linea: 'Línea 3', servicio: 's1' },
+        { linea: 'Línea 3', servicio: 's2' },
+        { linea: 'Línea 3', servicio: 's3' },
+        { linea: 'Línea 4', servicio: 's1' },
+        { linea: 'Línea 4', servicio: 's2' },
+        { linea: 'Línea 5', servicio: 's1' },
+        { linea: 'Línea 5', servicio: 's2' }
+      ];
+      
+      serviciosEspecificos.forEach(servicio => {
+        const item = datosFiltrados.find(d => d.linea === servicio.linea && d.servicio === servicio.servicio);
+        const fila = document.createElement("tr");
+        
+        if (item) {
+          const fechaFormateada = new Date(item.fecha).toLocaleDateString('es-AR');
+          const horaFormateada = new Date(item.timestamp).toLocaleTimeString('es-AR', { 
+            hour: '2-digit', 
+            minute: '2-digit' 
+          });
+          
+          fila.innerHTML = `
+            <td>${fechaFormateada}</td>
+            <td>${item.linea}</td>
+            <td>${item.servicio}</td>
+            <td>Coche ${item.coche}</td>
+            <td>${horaFormateada}</td>
+          `;
+        } else {
+          fila.innerHTML = `
+            <td>-</td>
+            <td>${servicio.linea}</td>
+            <td>${servicio.servicio}</td>
+            <td>-</td>
+            <td>-</td>
+          `;
+        }
+        tbody.appendChild(fila);
+      });
+    }
+
+    // Event listener para cambio de fecha
+    document.getElementById('fechaSelector').addEventListener('change', function() {
+      const fechaSeleccionada = this.value;
+      if (fechaSeleccionada) {
+        cargarDatos(fechaSeleccionada);
+      }
+    });
+
+    // Cargar datos al iniciar
+    cargarDatos(new Date().toISOString().split('T')[0]);
+  </script>
+</body>
+</html>

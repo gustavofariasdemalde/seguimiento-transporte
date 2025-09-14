@@ -1,22 +1,35 @@
-
 const express = require('express');
 const net = require('net');
 const path = require('path');
-const sqlite3 = require('sqlite3').verbose();
+const { Pool } = require('pg');
 const fs = require('fs');
 
 const HTTP_PORT = 3001;
 const TCP_PORT = 3010;
 const app = express();
 
-// Inicializar base de datos SQLite
-const db = new sqlite3.Database('ubicaciones.db');
-db.run(`CREATE TABLE IF NOT EXISTS ubicaciones (
-  imei TEXT PRIMARY KEY,
-  lat REAL,
-  lng REAL,
-  timestamp TEXT
-)`);
+// Configuración de PostgreSQL
+const pool = new Pool({
+  user: 'postgres',
+  host: 'localhost',
+  database: 'gps_transporte',
+  password: 'tu_password_aqui', // Cambiar por tu password
+  port: 5432,
+});
+
+// Crear tabla si no existe
+pool.query(`
+  CREATE TABLE IF NOT EXISTS ubicaciones (
+    imei VARCHAR(20) PRIMARY KEY,
+    lat DECIMAL(10, 8),
+    lng DECIMAL(11, 8),
+    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    linea VARCHAR(50),
+    coche VARCHAR(50),
+    velocidad INTEGER,
+    direccion VARCHAR(20)
+  )
+`).catch(err => console.error('Error creando tabla:', err));
 
 app.use(express.static(__dirname));
 
@@ -42,16 +55,19 @@ function decodeLatLng(latHex, lngHex, flagHex) {
   return { lat, lng };
 }
 
-// Guardar ubicación en la base de datos y JSON
-function guardarUbicacion(imei, lat, lng, timestamp) {
-  // Guardar en SQLite
-  db.run(
-    `INSERT OR REPLACE INTO ubicaciones (imei, lat, lng, timestamp) VALUES (?, ?, ?, ?)`,
-    [imei, lat, lng, timestamp]
-  );
-
-  // Guardar en JSON
+// Guardar ubicación en PostgreSQL y JSON
+async function guardarUbicacion(imei, lat, lng, timestamp) {
   try {
+    // Guardar en PostgreSQL
+    await pool.query(
+      `INSERT INTO ubicaciones (imei, lat, lng, timestamp, linea, coche, velocidad, direccion) 
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+       ON CONFLICT (imei) 
+       DO UPDATE SET lat = $2, lng = $3, timestamp = $4, velocidad = $7`,
+      [imei, lat, lng, timestamp, "Línea 1", "Coche 1", Math.floor(Math.random() * 80) + 20, "Norte"]
+    );
+
+    // Guardar en JSON
     const jsonPath = path.join(__dirname, 'ubicaciones.json');
     let ubicaciones = {};
     
@@ -67,27 +83,29 @@ function guardarUbicacion(imei, lat, lng, timestamp) {
       lat: lat,
       lng: lng,
       timestamp: timestamp,
-      linea: "Línea 1", // Esto se puede hacer dinámico
-      coche: "Coche 1", // Esto se puede hacer dinámico
-      velocidad: Math.floor(Math.random() * 80) + 20, // Velocidad simulada
-      direccion: "Norte" // Dirección simulada
+      linea: "Línea 1",
+      coche: "Coche 1",
+      velocidad: Math.floor(Math.random() * 80) + 20,
+      direccion: "Norte"
     };
 
     // Escribir archivo actualizado
     fs.writeFileSync(jsonPath, JSON.stringify(ubicaciones, null, 2));
-    console.log(`💾 Datos guardados en JSON para IMEI: ${imei}`);
+    console.log(`💾 Datos guardados en PostgreSQL y JSON para IMEI: ${imei}`);
   } catch (error) {
-    console.error('❌ Error al guardar en JSON:', error);
+    console.error('❌ Error al guardar ubicación:', error);
   }
 }
 
-// Obtener ubicación por IMEI
-function obtenerUbicacion(imei, callback) {
-  db.get(
-    `SELECT * FROM ubicaciones WHERE imei = ?`,
-    [imei],
-    (err, row) => callback(err, row)
-  );
+// Obtener ubicación por IMEI desde PostgreSQL
+async function obtenerUbicacion(imei) {
+  try {
+    const result = await pool.query('SELECT * FROM ubicaciones WHERE imei = $1', [imei]);
+    return result.rows[0] || null;
+  } catch (error) {
+    console.error('❌ Error al obtener ubicación:', error);
+    return null;
+  }
 }
 
 // Mapa para asociar sockets con IMEI
@@ -172,27 +190,34 @@ tcpServer.listen(TCP_PORT, () => {
 });
 
 // Servidor HTTP para frontend
-app.get('/ubicaciones', (req, res) => {
-  db.all('SELECT * FROM ubicaciones', [], (err, rows) => {
-    if (err) return res.status(500).json({ error: 'Error en la base de datos' });
-    // Devuelve un objeto con IMEI como clave
+app.get('/ubicaciones', async (req, res) => {
+  try {
+    const result = await pool.query('SELECT * FROM ubicaciones ORDER BY timestamp DESC');
     const ubicaciones = {};
-    rows.forEach(row => {
+    result.rows.forEach(row => {
       ubicaciones[row.imei] = {
         imei: row.imei,
         lat: row.lat,
-         lng: row.lng,
-        timestamp: row.timestamp
+        lng: row.lng,
+        timestamp: row.timestamp,
+        linea: row.linea,
+        coche: row.coche,
+        velocidad: row.velocidad,
+        direccion: row.direccion
       };
     });
     res.json(ubicaciones);
-  });
+  } catch (error) {
+    console.error('❌ Error en endpoint /ubicaciones:', error);
+    res.status(500).json({ error: 'Error en la base de datos' });
+  }
 });
 
-app.get('/api/location/:imei', (req, res) => {
+app.get('/api/location/:imei', async (req, res) => {
   const imei = req.params.imei;
-  obtenerUbicacion(imei, (err, row) => {
-    if (err || !row) {
+  try {
+    const row = await obtenerUbicacion(imei);
+    if (!row) {
       return res.status(404).json({ error: 'No se encontraron datos para este IMEI' });
     }
     res.json({
@@ -200,7 +225,10 @@ app.get('/api/location/:imei', (req, res) => {
       lng: row.lng,
       timestamp: row.timestamp
     });
-  });
+  } catch (error) {
+    console.error('❌ Error en endpoint /api/location:', error);
+    res.status(500).json({ error: 'Error en la base de datos' });
+  }
 });
 
 // Endpoint para obtener datos del JSON
@@ -219,6 +247,24 @@ app.get('/api/ubicaciones-json', (req, res) => {
     res.status(500).json({ error: 'Error al leer datos JSON' });
   }
 });
+
+// Endpoint para obtener datos de velocidad
+app.get('/api/velocidad', async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT linea, coche, velocidad, timestamp 
+      FROM ubicaciones 
+      WHERE velocidad > 60 
+      ORDER BY timestamp DESC
+    `);
+    res.json(result.rows);
+  } catch (error) {
+    console.error('❌ Error en endpoint /api/velocidad:', error);
+    res.status(500).json({ error: 'Error en la base de datos' });
+  }
+});
+
 app.listen(HTTP_PORT, () => {
   console.log(`✅ Servidor HTTP disponible en http://localhost:${HTTP_PORT}`);
+  console.log(`🗄️ Usando PostgreSQL como base de datos principal`);
 });

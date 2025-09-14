@@ -17,19 +17,32 @@ function initMap() {
 
 function actualizarUbicacion() {
   fetch(`/api/location/${IMEI}`)
-    .then(res => res.json())
+    .then(res => {
+      if (!res.ok) {
+        throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+      }
+      return res.json();
+    })
     .then(data => {
-      if (data.lat && data.lng) {
+      console.log('📍 Datos recibidos:', data);
+      if (data.lat && data.lng && !isNaN(data.lat) && !isNaN(data.lng)) {
         if (!marker) {
           marker = L.marker([data.lat, data.lng]).addTo(map)
-            .bindPopup("LINEA 1- COCHE 1").openPopup();
+            .bindPopup(`LINEA 1 - COCHE 1<br>Última actualización: ${new Date(data.timestamp).toLocaleString()}`)
+            .openPopup();
         } else {
           marker.setLatLng([data.lat, data.lng]);
+          marker.setPopupContent(`LINEA 1 - COCHE 1<br>Última actualización: ${new Date(data.timestamp).toLocaleString()}`);
         }
         map.setView([data.lat, data.lng], 16);
+        console.log(`✅ Ubicación actualizada: ${data.lat}, ${data.lng}`);
+      } else {
+        console.log('⚠️ Datos de ubicación inválidos:', data);
       }
     })
-    .catch(() => {/* Silenciar error */});
+    .catch(error => {
+      console.error('❌ Error al obtener ubicación:', error);
+    });
 }
 
 document.addEventListener('DOMContentLoaded', () => {

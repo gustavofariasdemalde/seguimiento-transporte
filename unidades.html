@@ -31,30 +31,30 @@
     }
     .grid-form {
       display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      grid-template-rows: repeat(2, auto);
-      gap: 2em;
-      width: 90vw;
-      max-width: 1100px;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 1.2em;
+      width: 95vw;
+      max-width: 1200px;
       margin: 0 auto;
     }
     .form-linea {
       background: #fffbe6;
       border-radius: 12px;
       box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-      padding: 1.5em 1em;
+      padding: 1em 0.5em;
       display: flex;
       flex-direction: column;
       align-items: center;
-      min-width: 220px;
+      min-width: 120px;
+      max-width: 170px;
     }
     .form-linea h3 {
-      margin: 0 0 1em 0;
-      font-size: 1.3em;
+      margin: 0 0 0.7em 0;
+      font-size: 1.1em;
       color: #333;
     }
     .servicio {
-      margin-bottom: 1em;
+      margin-bottom: 0.7em;
       width: 100%;
       display: flex;
       flex-direction: column;
@@ -62,28 +62,47 @@
     }
     .servicio label {
       font-weight: bold;
-      margin-bottom: 0.3em;
+      margin-bottom: 0.2em;
+      font-size: 0.98em;
     }
     .servicio input {
-      width: 80px;
-      padding: 0.4em;
+      width: 60px;
+      padding: 0.3em;
       border-radius: 6px;
       border: 1px solid #ccc;
       font-size: 1em;
-      margin-bottom: 0.2em;
+      margin-bottom: 0.1em;
     }
     .error {
       color: red;
-      font-size: 0.95em;
-      min-height: 1.2em;
+      font-size: 0.9em;
+      min-height: 1.1em;
     }
-    @media (max-width: 900px) {
+    .confirmar-btn {
+      margin: 2em auto 1em auto;
+      display: block;
+      background: #8bb3dd;
+      color: #fff;
+      border: none;
+      padding: 1.2em 4em;
+      font-size: 1.4em;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: background 0.2s;
+      font-weight: bold;
+      letter-spacing: 1px;
+      min-width: 250px;
+    }
+    .confirmar-btn:hover {
+      background: #6a9edb;
+    }
+    @media (max-width: 1100px) {
       .grid-form {
-        grid-template-columns: 1fr 1fr;
+        grid-template-columns: repeat(2, 1fr);
         grid-template-rows: repeat(3, auto);
       }
     }
-    @media (max-width: 600px) {
+    @media (max-width: 700px) {
       .grid-form {
         grid-template-columns: 1fr;
         grid-template-rows: repeat(5, auto);
@@ -127,11 +146,7 @@
         <input type="number" id="l2s2" min="1" max="50" required>
         <div class="error" id="err-l2s2"></div>
       </div>
-      <div class="servicio">
-        <label for="l2s3">TERCER SERVICIO</label>
-        <input type="number" id="l2s3" min="1" max="50" required>
-        <div class="error" id="err-l2s3"></div>
-      </div>
+      
     </div>
     <!-- Línea 3 -->
     <div class="form-linea">
@@ -181,6 +196,7 @@
       </div>
     </div>
   </form>
+  <button class="confirmar-btn" type="button" onclick="confirmarAsignacion()">CONFIRMAR</button>
   <script>
     // Mostrar fecha y hora actual
     function actualizarFecha() {
@@ -196,22 +212,119 @@
     // Validación de inputs
     const servicios = [
       'l1s1','l1s2','l1s3',
-      'l2s1','l2s2','l2s3',
+      'l2s1','l2s2',
       'l3s1','l3s2','l3s3',
       'l4s1','l4s2',
       'l5s1','l5s2'
     ];
+    
+    function validarCocheUnico(id, valor) {
+      const todosLosValores = servicios.map(sid => {
+        const elemento = document.getElementById(sid);
+        return elemento && elemento.value ? parseInt(elemento.value, 10) : null;
+      }).filter(val => val !== null);
+      
+      const duplicados = todosLosValores.filter((val, index) => todosLosValores.indexOf(val) !== index);
+      
+      if (duplicados.includes(valor)) {
+        return `El coche ${valor} ya está asignado en otra línea`;
+      }
+      return "";
+    }
+    
     servicios.forEach(id => {
       document.getElementById(id).addEventListener('input', function() {
         const val = parseInt(this.value, 10);
         const errorDiv = document.getElementById('err-' + id);
+        
         if (isNaN(val) || val < 1 || val > 50) {
           errorDiv.textContent = "El número debe ser entre 01 y 50";
         } else {
-          errorDiv.textContent = "";
+          const errorDuplicado = validarCocheUnico(id, val);
+          if (errorDuplicado) {
+            errorDiv.textContent = errorDuplicado;
+          } else {
+            errorDiv.textContent = "";
+          }
         }
       });
     });
+
+    // Acción del botón confirmar
+    function confirmarAsignacion() {
+      let valido = true;
+      const asignaciones = [];
+      const fechaActual = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+      const valoresIngresados = [];
+      
+      // Primero validar todos los valores y verificar duplicados
+      servicios.forEach(id => {
+        const elemento = document.getElementById(id);
+        if (!elemento) {
+          console.error(`Elemento no encontrado: ${id}`);
+          valido = false;
+          return;
+        }
+        
+        const val = parseInt(elemento.value, 10);
+        const errorDiv = document.getElementById('err-' + id);
+        
+        if (isNaN(val) || val < 1 || val > 50) {
+          if (errorDiv) {
+            errorDiv.textContent = "El número debe ser entre 01 y 50";
+          }
+          valido = false;
+        } else {
+          valoresIngresados.push(val);
+        }
+      });
+      
+      // Verificar duplicados
+      const duplicados = valoresIngresados.filter((val, index) => valoresIngresados.indexOf(val) !== index);
+      if (duplicados.length > 0) {
+        alert(`Error: Los coches ${duplicados.join(', ')} están duplicados. Cada coche debe ser único.`);
+        valido = false;
+      }
+      
+      if (valido) {
+        // Crear asignaciones
+        servicios.forEach(id => {
+          const elemento = document.getElementById(id);
+          const val = parseInt(elemento.value, 10);
+          const errorDiv = document.getElementById('err-' + id);
+          
+          if (errorDiv) {
+            errorDiv.textContent = "";
+          }
+          
+          // Extraer línea y servicio del ID
+          const linea = id.substring(1, 2);
+          const servicio = id.substring(2);
+          
+          asignaciones.push({
+            fecha: fechaActual,
+            linea: `Línea ${linea}`,
+            servicio: servicio,
+            coche: val,
+            timestamp: new Date().toISOString()
+          });
+        });
+        
+        // Guardar en localStorage
+        const datosExistentes = JSON.parse(localStorage.getItem('asignaciones')) || [];
+        datosExistentes.push(...asignaciones);
+        localStorage.setItem('asignaciones', JSON.stringify(datosExistentes));
+        
+        console.log('Asignaciones guardadas:', asignaciones);
+        alert("¡Asignación confirmada y guardada!");
+        window.location.href = "menu.html";
+      } else {
+        alert("Por favor, corrija los errores antes de confirmar.");
+      }
+    }
   </script>
 </body>
 </html>
+
+
+

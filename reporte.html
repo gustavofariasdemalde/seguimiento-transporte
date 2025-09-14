@@ -1,11 +1,182 @@
+
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
+  <meta charset="UTF-8">
+  <title>Reporte de Asignaciones</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f4f6f8;
+      margin: 0;
+      padding: 2em;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    h1 {
+      text-align: center;
+      color: #2c3e50;
+      margin-bottom: 1em;
+    }
+
+    table {
+      border-collapse: collapse;
+      width: 90%;
+      max-width: 1000px;
+      background: white;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+
+    th, td {
+      padding: 1em;
+      text-align: center;
+    }
+
+    th {
+      background-color: #2980b9;
+      color: white;
+      font-size: 1.1em;
+    }
+
+    tr:nth-child(even) {
+      background-color: #f2f2f2;
+    }
+
+    tr:hover {
+      background-color: #eaf2f8;
+    }
+  </style>
 </head>
 <body>
-    
+  <h1>Información de Unidades</h1>
+  
+  <div style="margin: 2em 0; text-align: center;">
+    <label for="fechaSelector" style="font-size: 1.2em; font-weight: bold; margin-right: 1em;">Seleccionar Fecha:</label>
+    <input type="date" id="fechaSelector" style="padding: 0.5em; font-size: 1.1em; border-radius: 6px; border: 1px solid #ccc;">
+  </div>
+  
+  <table id="tablaReporte">
+    <thead>
+      <tr>
+        <th>Línea</th>
+        <th>Unidad</th>
+        <th>KM Recorridos</th>
+      </tr>
+    </thead>
+    <tbody>
+      <!-- Contenido dinámico -->
+    </tbody>
+  </table>
+
+  <h2 style="text-align: center; color: #2c3e50; margin-top: 3em; margin-bottom: 1em;">Control de Velocidad</h2>
+  <table id="tablaVelocidad">
+    <thead>
+      <tr>
+        <th>Unidad</th>
+        <th>Superó 60 km/h</th>
+        <th>Hora</th>
+      </tr>
+    </thead>
+    <tbody>
+      <!-- Contenido dinámico -->
+    </tbody>
+  </table>
+
+  <div style="text-align: center; margin-top: 3em;">
+    <button onclick="window.location.href='menu.html'" style="background: #8bb3dd; color: #fff; border: none; padding: 1em 2em; font-size: 1.2em; border-radius: 8px; cursor: pointer; transition: background 0.2s;">Volver al Menú</button>
+  </div>
+
+  <script>
+    // Datos de velocidad (inicialmente vacío)
+    const datosVelocidad = [];
+
+    // Establecer fecha actual por defecto
+    document.getElementById('fechaSelector').value = new Date().toISOString().split('T')[0];
+
+    function cargarDatos(fechaFiltro = null) {
+      const datos = JSON.parse(localStorage.getItem('asignaciones')) || [];
+      const tbody = document.querySelector("#tablaReporte tbody");
+      tbody.innerHTML = ''; // Limpiar tabla
+
+      // Filtrar datos por fecha si se especifica
+      let datosFiltrados = datos;
+      if (fechaFiltro) {
+        datosFiltrados = datos.filter(item => item.fecha === fechaFiltro);
+      }
+
+      // Mostrar solo los 12 servicios específicos
+      const serviciosEspecificos = [
+        { linea: 'Línea 1', servicio: 's1' },
+        { linea: 'Línea 1', servicio: 's2' },
+        { linea: 'Línea 1', servicio: 's3' },
+        { linea: 'Línea 2', servicio: 's1' },
+        { linea: 'Línea 2', servicio: 's2' },
+        { linea: 'Línea 3', servicio: 's1' },
+        { linea: 'Línea 3', servicio: 's2' },
+        { linea: 'Línea 3', servicio: 's3' },
+        { linea: 'Línea 4', servicio: 's1' },
+        { linea: 'Línea 4', servicio: 's2' },
+        { linea: 'Línea 5', servicio: 's1' },
+        { linea: 'Línea 5', servicio: 's2' }
+      ];
+
+      serviciosEspecificos.forEach(servicio => {
+        const item = datosFiltrados.find(d => d.linea === servicio.linea && d.servicio === servicio.servicio);
+        const fila = document.createElement("tr");
+        
+        if (item) {
+          fila.innerHTML = `
+            <td>${item.linea}</td>
+            <td>${item.coche}</td>
+            <td>${item.km || '—'}</td>
+          `;
+        } else {
+          fila.innerHTML = `
+            <td>${servicio.linea}</td>
+            <td>-</td>
+            <td>—</td>
+          `;
+        }
+        tbody.appendChild(fila);
+      });
+    }
+
+    function cargarDatosVelocidad() {
+      const tbodyVelocidad = document.querySelector("#tablaVelocidad tbody");
+      tbodyVelocidad.innerHTML = ''; // Limpiar tabla
+
+      if (datosVelocidad.length === 0) {
+        const fila = document.createElement("tr");
+        fila.innerHTML = '<td colspan="3" style="text-align: center; color: #7f8c8d; font-style: italic;">No hay datos de velocidad disponibles</td>';
+        tbodyVelocidad.appendChild(fila);
+      } else {
+        datosVelocidad.forEach(item => {
+          const fila = document.createElement("tr");
+          fila.innerHTML = `
+            <td>${item.unidad}</td>
+            <td style="color: ${item.supero === 'Sí' ? 'red' : 'green'}; font-weight: bold;">${item.supero}</td>
+            <td>${item.hora}</td>
+          `;
+          tbodyVelocidad.appendChild(fila);
+        });
+      }
+    }
+
+    // Event listener para cambio de fecha
+    document.getElementById('fechaSelector').addEventListener('change', function() {
+      const fechaSeleccionada = this.value;
+      if (fechaSeleccionada) {
+        cargarDatos(fechaSeleccionada);
+      }
+    });
+
+    // Cargar datos al iniciar
+    cargarDatos(new Date().toISOString().split('T')[0]);
+    cargarDatosVelocidad();
+  </script>
 </body>
 </html>
