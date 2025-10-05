@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Histórico de Recorrido</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <style>
+    body {
+      background: #ffd600;
+      min-height: 100vh;
+      margin: 0;
+      font-family: Arial, sans-serif;
+    }
+    .container {
+      text-align: center;
+      margin-top: 4vh;
+    }
+    .controls {
+      display: flex;
+      gap: 1em;
+      justify-content: center;
+      flex-wrap: wrap;
+      margin-bottom: 1em;
+    }
+    input, button {
+      padding: 0.6em 0.9em;
+      font-size: 1em;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+    }
+    button {
+      background: #8bb3dd;
+      color: #fff;
+      border: none;
+      cursor: pointer;
+      font-weight: bold;
+    }
+    button:hover { background: #6a9edb; }
+    #map {
+      width: 92vw;
+      height: 64vh;
+      margin: 1em auto 2em auto;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    }
+    .metrics {
+      display: flex;
+      gap: 1.2em;
+      justify-content: center;
+      flex-wrap: wrap;
+      margin: 0 0 0.5em 0;
+    }
+    .metric-card {
+      background: #fffbe6;
+      padding: 0.8em 1.2em;
+      border-radius: 10px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+      min-width: 200px;
+    }
+    .metric-title { color: #2c3e50; font-weight: bold; margin-bottom: 0.3em; }
+    .metric-value { font-size: 1.3em; }
+  </style>
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <script>
+    let map, polyline, markers = [];
+
+    function initMap() {
+      map = L.map('map').setView([-31.2608, -61.4751], 14);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '© OpenStreetMap contributors'
+      }).addTo(map);
+    }
+
+    function clearMap() {
+      if (polyline) { map.removeLayer(polyline); polyline = null; }
+      markers.forEach(m => map.removeLayer(m));
+      markers = [];
+    }
+
+    function fitToPoints(points) {
+      if (!points.length) return;
+      const bounds = L.latLngBounds(points.map(p => [p.lat, p.lng]));
+      map.fitBounds(bounds.pad(0.2));
+    }
+
+    function haversineKm(a, b) {
+      const R = 6371; // km
+      const dLat = (b.lat - a.lat) * Math.PI / 180;
+      const dLng = (b.lng - a.lng) * Math.PI / 180;
+      const la1 = a.lat * Math.PI / 180;
+      const la2 = b.lat * Math.PI / 180;
+      const h = Math.sin(dLat/2) ** 2 + Math.cos(la1) * Math.cos(la2) * Math.sin(dLng/2) ** 2;
+      const c = 2 * Math.asin(Math.sqrt(h));
+      return R * c;
+    }
+
+    function formatDuration(ms) {
+      const totalMinutes = Math.floor(ms / 60000);
+      const hours = Math.floor(totalMinutes / 60);
+      const minutes = totalMinutes % 60;
+      if (hours > 0) return `${hours} h ${minutes} min`;
+      return `${minutes} min`;
+    }
+
+    async function cargarHistorial() {
+      const cocheValue = document.getElementById('coche').value.trim();
+      const from = document.getElementById('from').value;
+      const to = document.getElementById('to').value;
+      if (!cocheValue) { alert('Ingrese un número de coche'); return; }
+      // mapear coche -> imei
+      const ubicResp = await fetch('/ubicaciones');
+      const ubicaciones = ubicResp.ok ? await ubicResp.json() : {};
+      const imei = Object.keys(ubicaciones).find(k => {
+        const c = (ubicaciones[k]?.coche || '').toString().toLowerCase();
+        return c.endsWith(cocheValue.toLowerCase());
+      });
+      if (!imei) { alert('No se encontró IMEI para el coche ingresado'); return; }
+      let url = `/api/historial?imei=${encodeURIComponent(imei)}`;
+      if (from) url += `&from=${encodeURIComponent(new Date(from).toISOString())}`;
+      if (to) url += `&to=${encodeURIComponent(new Date(to).toISOString())}`;
+      clearMap();
+      try {
+        const resp = await fetch(url);
+        if (!resp.ok) throw new Error('Error al consultar historial');
+        const data = await resp.json();
+        if (!Array.isArray(data) || data.length === 0) {
+          alert('Sin datos para el rango seleccionado');
+          return;
+        }
+        const points = data.map(d => ({ lat: parseFloat(d.lat), lng: parseFloat(d.lng), t: d.timestamp }));
+        polyline = L.polyline(points.map(p => [p.lat, p.lng]), { color: '#2c3e50', weight: 4 }).addTo(map);
+        // marcar inicio y fin
+        const start = points[0];
+        const end = points[points.length - 1];
+        const m1 = L.marker([start.lat, start.lng]).addTo(map).bindPopup('Inicio');
+        const m2 = L.marker([end.lat, end.lng]).addTo(map).bindPopup('Fin');
+        markers.push(m1, m2);
+        fitToPoints(points);
+        // guardar último dataset en memoria
+        window.__historial_actual = data;
+
+        // métricas: distancia, tiempo y velocidades
+        let totalKm = 0;
+        let speeds = [];
+        for (let i = 1; i < points.length; i++) {
+          const a = points[i - 1];
+          const b = points[i];
+          if (isFinite(a.lat) && isFinite(a.lng) && isFinite(b.lat) && isFinite(b.lng)) {
+            const dist = haversineKm(a, b);
+            totalKm += dist;
+            const tA = new Date(a.t).getTime();
+            const tB = new Date(b.t).getTime();
+            if (isFinite(tA) && isFinite(tB) && tB > tA) {
+              const dtHours = (tB - tA) / (1000 * 60 * 60);
+              if (dtHours > 0) speeds.push(dist / dtHours);
+            }
+          }
+        }
+        const t0 = new Date(points[0].t).getTime();
+        const tN = new Date(points[points.length - 1].t).getTime();
+        const durMs = isFinite(t0) && isFinite(tN) ? Math.max(0, tN - t0) : 0;
+        const avgSpeed = speeds.length > 0 ? speeds.reduce((a, b) => a + b, 0) / speeds.length : 0;
+        const maxSpeed = speeds.length > 0 ? Math.max(...speeds) : 0;
+        // tiempo detenido: considerar tramos con velocidad < 1 km/h
+        let stoppedMs = 0;
+        for (let i = 1; i < points.length; i++) {
+          const a = points[i - 1];
+          const b = points[i];
+          const tA = new Date(a.t).getTime();
+          const tB = new Date(b.t).getTime();
+          if (isFinite(tA) && isFinite(tB) && tB > tA) {
+            const dist = haversineKm(a, b);
+            const dtHours = (tB - tA) / (1000 * 60 * 60);
+            const v = dtHours > 0 ? dist / dtHours : 0;
+            if (v < 1) stoppedMs += (tB - tA);
+          }
+        }
+        document.getElementById('metricDist').textContent = `${totalKm.toFixed(2)} km`;
+        document.getElementById('metricTime').textContent = formatDuration(durMs);
+        document.getElementById('metricAvgSpeed').textContent = `${avgSpeed.toFixed(1)} km/h`;
+        document.getElementById('metricMaxSpeed').textContent = `${maxSpeed.toFixed(1)} km/h`;
+        document.getElementById('metricStopped').textContent = formatDuration(stoppedMs);
+      } catch (e) {
+        console.error(e);
+        alert('No se pudo cargar el historial');
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      initMap();
+      document.getElementById('btnCargar').addEventListener('click', cargarHistorial);
+      document.getElementById('btnVolver').addEventListener('click', () => window.location.href = 'menu.html');
+    });
+  </script>
+</head>
+<body>
+  <div class="container">
+    <h2>Histórico de Recorrido</h2>
+    <div class="controls">
+      <input type="text" id="coche" placeholder="Número de coche" style="min-width:240px" />
+      <input type="datetime-local" id="from" />
+      <input type="datetime-local" id="to" />
+      <button id="btnCargar">Cargar recorrido</button>
+      <button id="btnVolver">Volver</button>
+    </div>
+    <div class="metrics">
+      <div class="metric-card">
+        <div class="metric-title">Distancia total</div>
+        <div class="metric-value" id="metricDist">–</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-title">Tiempo total</div>
+        <div class="metric-value" id="metricTime">–</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-title">Velocidad promedio</div>
+        <div class="metric-value" id="metricAvgSpeed">–</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-title">Velocidad máxima</div>
+        <div class="metric-value" id="metricMaxSpeed">–</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-title">Tiempo detenido</div>
+        <div class="metric-value" id="metricStopped">–</div>
+      </div>
+    </div>
+    <div id="map"></div>
+  </div>
+</body>
+</html>
+

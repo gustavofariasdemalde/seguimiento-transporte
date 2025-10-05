@@ -174,18 +174,18 @@
     // Establecer fecha actual por defecto
     document.getElementById('fechaSelector').value = new Date().toISOString().split('T')[0];
 
-    function cargarDatos(fechaFiltro = null) {
-      const datos = JSON.parse(localStorage.getItem('asignaciones')) || [];
+    async function cargarDatos(fechaFiltro = null) {
       const tbody = document.querySelector("#tablaAsignaciones tbody");
       const statsContainer = document.getElementById('statsContainer');
-      
-      tbody.innerHTML = ''; // Limpiar tabla
-      
-      // Filtrar datos por fecha si se especifica
-      let datosFiltrados = datos;
+      tbody.innerHTML = '';
+
+      // Traer datos del backend
+      let url = '/api/asignaciones';
       if (fechaFiltro) {
-        datosFiltrados = datos.filter(item => item.fecha === fechaFiltro);
+        url += `?fecha=${encodeURIComponent(fechaFiltro)}`;
       }
+      const resp = await fetch(url);
+      const datos = resp.ok ? await resp.json() : [];
       
       // Calcular estadísticas - solo Líneas Activas
       const lineasUnicas = new Set(datosFiltrados.map(item => item.linea)).size;
@@ -198,13 +198,13 @@
         </div>
       `;
       
-      if (datosFiltrados.length === 0) {
+      if (datos.length === 0) {
         tbody.innerHTML = '<tr><td colspan="5" class="no-data">No hay asignaciones para la fecha seleccionada</td></tr>';
         return;
       }
       
       // Ordenar por fecha y hora
-      datosFiltrados.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+      datos.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
       
       // Mostrar solo los 12 servicios específicos
       const serviciosEspecificos = [
@@ -223,7 +223,7 @@
       ];
       
       serviciosEspecificos.forEach(servicio => {
-        const item = datosFiltrados.find(d => d.linea === servicio.linea && d.servicio === servicio.servicio);
+        const item = datos.find(d => d.linea === servicio.linea && d.servicio === servicio.servicio);
         const fila = document.createElement("tr");
         
         if (item) {

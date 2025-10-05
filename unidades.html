@@ -309,15 +309,25 @@
             timestamp: new Date().toISOString()
           });
         });
-        
-        // Guardar en localStorage
-        const datosExistentes = JSON.parse(localStorage.getItem('asignaciones')) || [];
-        datosExistentes.push(...asignaciones);
-        localStorage.setItem('asignaciones', JSON.stringify(datosExistentes));
-        
-        console.log('Asignaciones guardadas:', asignaciones);
-        alert("¡Asignación confirmada y guardada!");
-        window.location.href = "menu.html";
+
+        // Enviar al backend
+        fetch('/api/asignaciones', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ asignaciones })
+        })
+        .then(res => {
+          if (!res.ok) throw new Error('Error al guardar en servidor');
+          return res.json();
+        })
+        .then(() => {
+          alert("¡Asignación confirmada y guardada en el servidor!");
+          window.location.href = "menu.html";
+        })
+        .catch(err => {
+          console.error('Fallo guardado en servidor, no se guardó.', err);
+          alert('No se pudo guardar en el servidor. Intente nuevamente.');
+        });
       } else {
         alert("Por favor, corrija los errores antes de confirmar.");
       }

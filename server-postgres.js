@@ -7,6 +7,7 @@ const fs = require('fs');
 const HTTP_PORT = 3001;
 const TCP_PORT = 3010;
 const app = express();
+app.use(express.json());
 
 // Configuración de PostgreSQL
 const pool = new Pool({
@@ -65,6 +66,13 @@ async function guardarUbicacion(imei, lat, lng, timestamp) {
        ON CONFLICT (imei) 
        DO UPDATE SET lat = $2, lng = $3, timestamp = $4, velocidad = $7`,
       [imei, lat, lng, timestamp, "Línea 1", "Coche 1", Math.floor(Math.random() * 80) + 20, "Norte"]
+    );
+
+    // Insertar en histórico
+    await pool.query(
+      `INSERT INTO ubicaciones_historial (imei, lat, lng, timestamp, velocidad, direccion, linea, coche)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+      [imei, lat, lng, timestamp, Math.floor(Math.random() * 80) + 20, "Norte", "Línea 1", "Coche 1"]
     );
 
     // Guardar en JSON
@@ -261,6 +269,79 @@ app.get('/api/velocidad', async (req, res) => {
   } catch (error) {
     console.error('❌ Error en endpoint /api/velocidad:', error);
     res.status(500).json({ error: 'Error en la base de datos' });
+  }
+});
+
+// Endpoints para asignaciones
+app.post('/api/asignaciones', async (req, res) => {
+  try {
+    const asignaciones = Array.isArray(req.body?.asignaciones) ? req.body.asignaciones : [];
+    if (asignaciones.length === 0) {
+      return res.status(400).json({ error: 'No se recibieron asignaciones' });
+    }
+
+    // Insertar en bloque
+    const values = [];
+    const params = [];
+    asignaciones.forEach((a, idx) => {
+      const base = idx * 5;
+      values.push(`($${base + 1}, $${base + 2}, $${base + 3}, $${base + 4}, $${base + 5})`);
+      params.push(a.fecha, a.linea, a.servicio, a.coche, a.timestamp || new Date().toISOString());
+    });
+
+    await pool.query(
+      `INSERT INTO asignaciones (fecha, linea, servicio, coche, timestamp) VALUES ${values.join(', ')}`,
+      params
+    );
+
+    res.json({ ok: true, count: asignaciones.length });
+  } catch (error) {
+    console.error('❌ Error en POST /api/asignaciones:', error);
+    res.status(500).json({ error: 'Error al guardar asignaciones' });
+  }
+});
+
+app.get('/api/asignaciones', async (req, res) => {
+  try {
+    const { fecha } = req.query;
+    if (fecha) {
+      const result = await pool.query(
+        `SELECT fecha, linea, servicio, coche, timestamp FROM asignaciones WHERE fecha = $1 ORDER BY timestamp DESC`,
+        [fecha]
+      );
+      return res.json(result.rows);
+    }
+    const result = await pool.query(
+      `SELECT fecha, linea, servicio, coche, timestamp FROM asignaciones ORDER BY timestamp DESC`
+    );
+    res.json(result.rows);
+  } catch (error) {
+    console.error('❌ Error en GET /api/asignaciones:', error);
+    res.status(500).json({ error: 'Error al obtener asignaciones' });
+  }
+});
+
+// Historial por IMEI y rango
+app.get('/api/historial', async (req, res) => {
+  try {
+    const { imei, from, to } = req.query;
+    if (!imei) {
+      return res.status(400).json({ error: 'Parámetro imei es requerido' });
+    }
+    const clauses = ['imei = $1'];
+    const params = [imei];
+    let idx = 2;
+    if (from) { clauses.push(`timestamp >= $${idx++}`); params.push(from); }
+    if (to) { clauses.push(`timestamp <= $${idx++}`); params.push(to); }
+    const sql = `SELECT imei, lat, lng, velocidad, direccion, linea, coche, timestamp 
+                 FROM ubicaciones_historial 
+                 WHERE ${clauses.join(' AND ')} 
+                 ORDER BY timestamp ASC`;
+    const result = await pool.query(sql, params);
+    res.json(result.rows);
+  } catch (error) {
+    console.error('❌ Error en GET /api/historial:', error);
+    res.status(500).json({ error: 'Error al obtener historial' });
   }
 });
 

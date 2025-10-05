@@ -19,6 +19,20 @@ CREATE TABLE IF NOT EXISTS ubicaciones (
     direccion VARCHAR(20)
 );
 
+-- Tabla de histórico de ubicaciones (traza completa)
+CREATE TABLE IF NOT EXISTS ubicaciones_historial (
+    id SERIAL PRIMARY KEY,
+    imei VARCHAR(20) NOT NULL,
+    lat DECIMAL(10, 8) NOT NULL,
+    lng DECIMAL(11, 8) NOT NULL,
+    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    velocidad INTEGER,
+    direccion VARCHAR(20),
+    linea VARCHAR(50),
+    coche VARCHAR(50),
+    FOREIGN KEY (imei) REFERENCES ubicaciones(imei)
+);
+
 -- Crear tabla de asignaciones de unidades
 CREATE TABLE IF NOT EXISTS asignaciones (
     id SERIAL PRIMARY KEY,
@@ -45,6 +59,10 @@ CREATE INDEX IF NOT EXISTS idx_ubicaciones_timestamp ON ubicaciones(timestamp);
 CREATE INDEX IF NOT EXISTS idx_ubicaciones_linea ON ubicaciones(linea);
 CREATE INDEX IF NOT EXISTS idx_asignaciones_fecha ON asignaciones(fecha);
 CREATE INDEX IF NOT EXISTS idx_eventos_velocidad_timestamp ON eventos_velocidad(timestamp);
+
+-- Índices para el histórico
+CREATE INDEX IF NOT EXISTS idx_historial_imei_timestamp ON ubicaciones_historial(imei, timestamp);
+CREATE INDEX IF NOT EXISTS idx_historial_timestamp ON ubicaciones_historial(timestamp);
 
 -- Insertar datos de ejemplo
 INSERT INTO ubicaciones (imei, lat, lng, linea, coche, velocidad, direccion) 
