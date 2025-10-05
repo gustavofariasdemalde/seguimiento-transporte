@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <title>Histórico de Recorrido</title>
-  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  
   <style>
     body {
       background: #ffd600;
@@ -14,6 +14,10 @@
     .container {
       text-align: center;
       margin-top: 4vh;
+      max-width: 1100px;
+      margin-left: auto;
+      margin-right: auto;
+      padding: 0 16px;
     }
     .controls {
       display: flex;
@@ -36,13 +40,7 @@
       font-weight: bold;
     }
     button:hover { background: #6a9edb; }
-    #map {
-      width: 92vw;
-      height: 64vh;
-      margin: 1em auto 2em auto;
-      border-radius: 12px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-    }
+    
     .metrics {
       display: flex;
       gap: 1.2em;
@@ -55,35 +53,13 @@
       padding: 0.8em 1.2em;
       border-radius: 10px;
       box-shadow: 0 2px 8px rgba(0,0,0,0.12);
-      min-width: 200px;
+      min-width: 220px;
+      flex: 1 1 240px; /* grow to fill available space */
     }
     .metric-title { color: #2c3e50; font-weight: bold; margin-bottom: 0.3em; }
     .metric-value { font-size: 1.3em; }
   </style>
-  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
   <script>
-    let map, polyline, markers = [];
-
-    function initMap() {
-      map = L.map('map').setView([-31.2608, -61.4751], 14);
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        maxZoom: 19,
-        attribution: '© OpenStreetMap contributors'
-      }).addTo(map);
-    }
-
-    function clearMap() {
-      if (polyline) { map.removeLayer(polyline); polyline = null; }
-      markers.forEach(m => map.removeLayer(m));
-      markers = [];
-    }
-
-    function fitToPoints(points) {
-      if (!points.length) return;
-      const bounds = L.latLngBounds(points.map(p => [p.lat, p.lng]));
-      map.fitBounds(bounds.pad(0.2));
-    }
-
     function haversineKm(a, b) {
       const R = 6371; // km
       const dLat = (b.lat - a.lat) * Math.PI / 180;
@@ -119,7 +95,6 @@
       let url = `/api/historial?imei=${encodeURIComponent(imei)}`;
       if (from) url += `&from=${encodeURIComponent(new Date(from).toISOString())}`;
       if (to) url += `&to=${encodeURIComponent(new Date(to).toISOString())}`;
-      clearMap();
       try {
         const resp = await fetch(url);
         if (!resp.ok) throw new Error('Error al consultar historial');
@@ -129,14 +104,6 @@
           return;
         }
         const points = data.map(d => ({ lat: parseFloat(d.lat), lng: parseFloat(d.lng), t: d.timestamp }));
-        polyline = L.polyline(points.map(p => [p.lat, p.lng]), { color: '#2c3e50', weight: 4 }).addTo(map);
-        // marcar inicio y fin
-        const start = points[0];
-        const end = points[points.length - 1];
-        const m1 = L.marker([start.lat, start.lng]).addTo(map).bindPopup('Inicio');
-        const m2 = L.marker([end.lat, end.lng]).addTo(map).bindPopup('Fin');
-        markers.push(m1, m2);
-        fitToPoints(points);
         // guardar último dataset en memoria
         window.__historial_actual = data;
 
@@ -188,7 +155,6 @@
     }
 
     document.addEventListener('DOMContentLoaded', () => {
-      initMap();
       document.getElementById('btnCargar').addEventListener('click', cargarHistorial);
       document.getElementById('btnVolver').addEventListener('click', () => window.location.href = 'menu.html');
     });
@@ -226,7 +192,6 @@
         <div class="metric-value" id="metricStopped">–</div>
       </div>
     </div>
-    <div id="map"></div>
   </div>
 </body>
 </html>
