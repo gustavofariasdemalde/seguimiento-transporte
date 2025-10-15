@@ -25,7 +25,7 @@
     table {
       border-collapse: collapse;
       width: 90%;
-      max-width: 1000px;
+      max-width: 1300px;
       background: white;
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
       border-radius: 12px;
@@ -73,19 +73,6 @@
     </tbody>
   </table>
 
-  <h2 style="text-align: center; color: #2c3e50; margin-top: 3em; margin-bottom: 1em;">Control de Velocidad</h2>
-  <table id="tablaVelocidad">
-    <thead>
-      <tr>
-        <th>Unidad</th>
-        <th>Superó 60 km/h</th>
-        <th>Hora</th>
-      </tr>
-    </thead>
-    <tbody>
-      <!-- Contenido dinámico -->
-    </tbody>
-  </table>
 
   <div style="text-align: center; margin-top: 3em;">
     <button onclick="window.location.href='menu.html'" style="background: #8bb3dd; color: #fff; border: none; padding: 1em 2em; font-size: 1.2em; border-radius: 8px; cursor: pointer; transition: background 0.2s;">Volver al Menú</button>
@@ -144,34 +131,6 @@
       });
     }
 
-    async function cargarDatosVelocidad() {
-      const tbodyVelocidad = document.querySelector("#tablaVelocidad tbody");
-      tbodyVelocidad.innerHTML = '';
-      try {
-        const resp = await fetch('/api/velocidad');
-        const datos = resp.ok ? await resp.json() : [];
-        if (datos.length === 0) {
-          const fila = document.createElement("tr");
-          fila.innerHTML = '<td colspan="3" style="text-align: center; color: #7f8c8d; font-style: italic;">No hay datos de velocidad disponibles</td>';
-          tbodyVelocidad.appendChild(fila);
-        } else {
-          datos.forEach(item => {
-            const hora = new Date(item.timestamp).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
-            const fila = document.createElement("tr");
-            fila.innerHTML = `
-              <td>${item.coche || '-'}</td>
-              <td style="color: ${item.velocidad > 60 ? 'red' : 'green'}; font-weight: bold;">${item.velocidad > 60 ? 'Sí' : 'No'}</td>
-              <td>${hora}</td>
-            `;
-            tbodyVelocidad.appendChild(fila);
-          });
-        }
-      } catch (e) {
-        const fila = document.createElement("tr");
-        fila.innerHTML = '<td colspan="3" style="text-align: center; color: #7f8c8d; font-style: italic;">Error cargando datos</td>';
-        tbodyVelocidad.appendChild(fila);
-      }
-    }
 
     document.getElementById('fechaSelector').addEventListener('change', function() {
       const fechaSeleccionada = this.value;
@@ -181,7 +140,6 @@
     });
 
     cargarDatos(new Date().toISOString().split('T')[0]);
-    cargarDatosVelocidad();
   </script>
 </body>
 </html>

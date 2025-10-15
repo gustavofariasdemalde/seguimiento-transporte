@@ -82,7 +82,6 @@
     async function cargarHistorial() {
       const cocheValue = document.getElementById('coche').value.trim();
       const from = document.getElementById('from').value;
-      const to = document.getElementById('to').value;
       if (!cocheValue) { alert('Ingrese un número de coche'); return; }
       // mapear coche -> imei
       const ubicResp = await fetch('/ubicaciones');
@@ -94,7 +93,6 @@
       if (!imei) { alert('No se encontró IMEI para el coche ingresado'); return; }
       let url = `/api/historial?imei=${encodeURIComponent(imei)}`;
       if (from) url += `&from=${encodeURIComponent(new Date(from).toISOString())}`;
-      if (to) url += `&to=${encodeURIComponent(new Date(to).toISOString())}`;
       try {
         const resp = await fetch(url);
         if (!resp.ok) throw new Error('Error al consultar historial');
@@ -166,7 +164,6 @@
     <div class="controls">
       <input type="text" id="coche" placeholder="Número de coche" style="min-width:240px" />
       <input type="datetime-local" id="from" />
-      <input type="datetime-local" id="to" />
       <button id="btnCargar">Cargar recorrido</button>
       <button id="btnVolver">Volver</button>
     </div>
