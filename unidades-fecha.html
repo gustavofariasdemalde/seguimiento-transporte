@@ -45,18 +45,21 @@
     }
 
     .fecha-selector button {
-      padding: 0.7em 1.5em;
+      padding: 0.8em 2em;
       background: #2980b9;
       color: white;
       border: none;
       border-radius: 6px;
       cursor: pointer;
-      font-size: 1.1em;
+      font-size: 1.3em;
+      font-weight: bold;
       transition: background 0.2s;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
     }
 
     .fecha-selector button:hover {
       background: #1f5f8b;
+      box-shadow: 0 3px 6px rgba(0, 0, 0, 0.3);
     }
 
     table {
@@ -144,10 +147,11 @@
 <body>
   <h1>Consulta de unidades asignada por fecha</h1>
   
-  <div class="fecha-selector">
-    <label for="fechaSelector">Seleccionar Fecha:</label>
-    <input type="date" id="fechaSelector">
-  </div>
+    <div class="fecha-selector">
+      <label for="fechaSelector">Seleccionar Fecha:</label>
+      <input type="date" id="fechaSelector">
+      <button id="btnAceptar" onclick="buscarAsignaciones()">Aceptar</button>
+    </div>
 
   <div class="stats" id="statsContainer">
     <!-- Estadísticas dinámicas -->
@@ -174,6 +178,16 @@
     // Establecer fecha actual por defecto
     document.getElementById('fechaSelector').value = new Date().toISOString().split('T')[0];
 
+    // Función para buscar asignaciones cuando se presiona Aceptar
+    function buscarAsignaciones() {
+      const fechaSeleccionada = document.getElementById('fechaSelector').value;
+      if (fechaSeleccionada) {
+        cargarDatos(fechaSeleccionada);
+      } else {
+        alert('Por favor seleccione una fecha');
+      }
+    }
+
     async function cargarDatos(fechaFiltro = null) {
       const tbody = document.querySelector("#tablaAsignaciones tbody");
       const statsContainer = document.getElementById('statsContainer');
@@ -188,7 +202,7 @@
       const datos = resp.ok ? await resp.json() : [];
       
       // Calcular estadísticas - solo Líneas Activas
-      const lineasUnicas = new Set(datosFiltrados.map(item => item.linea)).size;
+      const lineasUnicas = new Set(datos.map(item => item.linea)).size;
       
       // Mostrar estadísticas - solo Líneas Activas
       statsContainer.innerHTML = `
@@ -253,15 +267,7 @@
       });
     }
 
-    // Event listener para cambio de fecha
-    document.getElementById('fechaSelector').addEventListener('change', function() {
-      const fechaSeleccionada = this.value;
-      if (fechaSeleccionada) {
-        cargarDatos(fechaSeleccionada);
-      }
-    });
-
-    // Cargar datos al iniciar
+    // Cargar datos al iniciar con fecha actual
     cargarDatos(new Date().toISOString().split('T')[0]);
   </script>
 </body>

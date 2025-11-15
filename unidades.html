@@ -15,24 +15,24 @@
       align-items: center;
     }
     h2 {
-      margin-top: 2vh;
-      font-size: 2em;
+      margin-top: 1.5vh;
+      font-size: 2.3em;
       font-weight: bold;
       text-align: center;
     }
     .fecha-hoy {
       background: #fffbe6;
       border-radius: 8px;
-      padding: 0.7em 2em;
-      margin: 1em 0 2em 0;
-      font-size: 1.2em;
+      padding: 0.55em 1.3em;
+      margin: 0.7em 0 1.3em 0;
+      font-size: 1.4em;
       display: inline-block;
       box-shadow: 0 2px 8px rgba(0,0,0,0.08);
     }
     .grid-form {
       display: grid;
       grid-template-columns: repeat(5, 1fr);
-      gap: 1.2em;
+      gap: 0.9em;
       width: 95vw;
       max-width: 1200px;
       margin: 0 auto;
@@ -41,20 +41,20 @@
       background: #fffbe6;
       border-radius: 12px;
       box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-      padding: 1em 0.5em;
+      padding: 0.75em 0.35em;
       display: flex;
       flex-direction: column;
       align-items: center;
-      min-width: 120px;
-      max-width: 170px;
+      min-width: 105px;
+      max-width: 155px;
     }
     .form-linea h3 {
-      margin: 0 0 0.7em 0;
-      font-size: 1.1em;
+      margin: 0 0 0.55em 0;
+      font-size: 1.4em;
       color: #333;
     }
     .servicio {
-      margin-bottom: 0.7em;
+      margin-bottom: 0.55em;
       width: 100%;
       display: flex;
       flex-direction: column;
@@ -63,35 +63,35 @@
     .servicio label {
       font-weight: bold;
       margin-bottom: 0.2em;
-      font-size: 0.98em;
+      font-size: 1.15em;
     }
     .servicio input {
-      width: 60px;
+      width: 62px;
       padding: 0.3em;
       border-radius: 6px;
       border: 1px solid #ccc;
-      font-size: 1em;
+      font-size: 1.25em;
       margin-bottom: 0.1em;
     }
     .error {
       color: red;
-      font-size: 0.9em;
+      font-size: 0.95em;
       min-height: 1.1em;
     }
     .confirmar-btn {
-      margin: 2em auto 1em auto;
+      margin: 1.3em auto 0.7em auto;
       display: block;
       background: #8bb3dd;
       color: #fff;
       border: none;
-      padding: 1.2em 4em;
-      font-size: 1.4em;
+      padding: 0.9em 2.8em;
+      font-size: 1.7em;
       border-radius: 10px;
       cursor: pointer;
       transition: background 0.2s;
       font-weight: bold;
       letter-spacing: 1px;
-      min-width: 250px;
+      min-width: 210px;
     }
     .confirmar-btn:hover {
       background: #6a9edb;
@@ -251,7 +251,7 @@
     });
 
     // Acción del botón confirmar
-    function confirmarAsignacion() {
+    async function confirmarAsignacion() {
       let valido = true;
       const asignaciones = [];
       const fechaActual = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
@@ -310,24 +310,80 @@
           });
         });
 
+        // Mostrar datos que se van a enviar
+        console.log('📤 Total asignaciones a enviar:', asignaciones.length);
+        console.log('📤 Enviando asignaciones:', asignaciones);
+        console.log('📤 JSON a enviar:', JSON.stringify({ asignaciones }, null, 2));
+        
+        // Verificar que todas las asignaciones tengan los campos requeridos
+        const asignacionesValidadas = asignaciones.map(a => {
+          if (!a.fecha || !a.linea || !a.servicio || a.coche === undefined) {
+            console.error('❌ Asignación inválida detectada:', a);
+          }
+          return a;
+        });
+        
         // Enviar al backend
-        fetch('/api/asignaciones', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ asignaciones })
-        })
-        .then(res => {
-          if (!res.ok) throw new Error('Error al guardar en servidor');
-          return res.json();
-        })
-        .then(() => {
+        const urlBase = window.location.origin; // Usa la URL actual del servidor
+        const apiUrl = `${urlBase}/api/asignaciones`;
+        console.log('🌐 URL base del servidor:', urlBase);
+        console.log('🌐 URL completa de la API:', apiUrl);
+        
+        try {
+          const response = await fetch(apiUrl, {
+            method: 'POST',
+            headers: { 
+              'Content-Type': 'application/json',
+              'Accept': 'application/json'
+            },
+            body: JSON.stringify({ asignaciones: asignacionesValidadas })
+          });
+          
+          console.log('📥 Respuesta del servidor - Status:', response.status, response.statusText);
+          console.log('📥 Headers de respuesta:', Object.fromEntries(response.headers.entries()));
+          
+          let data;
+          try {
+            const text = await response.text();
+            console.log('📥 Respuesta del servidor (texto):', text);
+            data = text ? JSON.parse(text) : {};
+          } catch (parseErr) {
+            console.error('❌ Error parseando respuesta JSON:', parseErr);
+            throw new Error(`Error al procesar respuesta del servidor: ${parseErr.message}`);
+          }
+          
+          console.log('📥 Respuesta del servidor - Data:', data);
+          
+          if (!response.ok) {
+            const errorMsg = data.error || data.details || data.message || `Error del servidor: ${response.status} ${response.statusText}`;
+            console.error('❌ Error del servidor:', errorMsg);
+            console.error('❌ Código de error:', data.code);
+            throw new Error(errorMsg);
+          }
+          
+          console.log('✅ Respuesta exitosa del servidor:', data);
           alert("¡Asignación confirmada y guardada en el servidor!");
           window.location.href = "menu.html";
-        })
-        .catch(err => {
-          console.error('Fallo guardado en servidor, no se guardó.', err);
-          alert('No se pudo guardar en el servidor. Intente nuevamente.');
-        });
+          
+        } catch (err) {
+          console.error('❌ Fallo guardado en servidor, no se guardó.', err);
+          console.error('❌ Tipo de error:', err.name);
+          console.error('❌ Detalles del error:', err.message);
+          console.error('❌ Stack trace:', err.stack);
+          
+          // Verificar tipo de error
+          let mensajeError = err.message || 'Error desconocido';
+          
+          if (err.name === 'TypeError' && (err.message.includes('Failed to fetch') || err.message.includes('NetworkError') || err.message.includes('fetch'))) {
+            mensajeError = `Error de conexión: No se pudo conectar al servidor.\n\nURL intentada: ${apiUrl}\n\nPosibles causas:\n1. El servidor no está corriendo\n2. Error de red o CORS\n3. URL incorrecta`;
+          } else if (err.message.includes('Error al procesar respuesta')) {
+            mensajeError = `Error del servidor: ${err.message}\n\nEl servidor respondió pero con un formato incorrecto.`;
+          } else {
+            mensajeError = `Error del servidor: ${err.message}`;
+          }
+          
+          alert(`❌ No se pudo guardar en el servidor\n\n${mensajeError}\n\n📋 Para más detalles:\n1. Abra la consola del navegador (F12)\n2. Revise los logs del servidor\n3. Verifique que el servidor esté corriendo`);
+        }
       } else {
         alert("Por favor, corrija los errores antes de confirmar.");
       }

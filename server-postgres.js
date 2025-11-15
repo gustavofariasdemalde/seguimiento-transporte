@@ -3,22 +3,56 @@ const net = require('net');
 const path = require('path');
 const { Pool } = require('pg');
 const fs = require('fs');
+const cors = require('cors');
+require('dotenv').config();
 
-const HTTP_PORT = 3001;
-const TCP_PORT = 3010;
+const HTTP_PORT = process.env.PORT || 3001;
+const TCP_PORT = process.env.TCP_PORT || 3010;
 const app = express();
+
+// Habilitar CORS para permitir peticiones desde cualquier origen
+app.use(cors());
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
-// Configuración de PostgreSQL
-const pool = new Pool({
-  user: 'postgres',
-  host: 'localhost',
-  database: 'gps_transporte',
-  password: 'tu_password_aqui', // Cambiar por tu password
-  port: 5432,
-});
+// Configuración de PostgreSQL - soporta variables de entorno para Render.com y otros servicios
+let poolConfig;
+if (process.env.DATABASE_URL) {
+  // Render.com y otros servicios usan DATABASE_URL
+  poolConfig = {
+    connectionString: process.env.DATABASE_URL,
+    ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
+  };
+} else {
+  // Configuración local
+  poolConfig = {
+    user: process.env.DB_USER || 'postgres',
+    host: process.env.DB_HOST || 'localhost',
+    database: process.env.DB_NAME || 'gps_transporte',
+    password: process.env.DB_PASSWORD || 'tu_password_aqui',
+    port: process.env.DB_PORT || 5432,
+  };
+}
 
-// Crear tabla si no existe
+const pool = new Pool(poolConfig);
+
+// Verificar conexión a PostgreSQL
+pool.query('SELECT NOW()')
+  .then(result => {
+    console.log('✅ Conexión a PostgreSQL establecida:', result.rows[0].now);
+  })
+  .catch(err => {
+    console.error('❌ Error conectando a PostgreSQL:', err.message);
+    console.error('❌ Verifique que PostgreSQL esté corriendo y que la configuración sea correcta');
+    console.error('❌ Detalles:', {
+      user: pool.options.user,
+      host: pool.options.host,
+      database: pool.options.database,
+      port: pool.options.port
+    });
+  });
+
+// Crear tablas si no existen
 pool.query(`
   CREATE TABLE IF NOT EXISTS ubicaciones (
     imei VARCHAR(20) PRIMARY KEY,
@@ -30,9 +64,32 @@ pool.query(`
     velocidad INTEGER,
     direccion VARCHAR(20)
   )
-`).catch(err => console.error('Error creando tabla:', err));
+`).catch(err => console.error('Error creando tabla ubicaciones:', err));
 
-app.use(express.static(__dirname));
+pool.query(`
+  CREATE TABLE IF NOT EXISTS asignaciones (
+    id SERIAL PRIMARY KEY,
+    fecha DATE NOT NULL,
+    linea VARCHAR(20) NOT NULL,
+    servicio VARCHAR(20) NOT NULL,
+    coche INTEGER NOT NULL,
+    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  )
+`)
+.then(() => console.log('✅ Tabla asignaciones creada/verificada'))
+.catch(err => {
+  console.error('❌ Error creando tabla asignaciones:', err);
+  console.error('❌ Detalles:', err.message, err.code);
+});
+
+// Endpoint de prueba para verificar que el servidor esté funcionando
+app.get('/api/health', (req, res) => {
+  res.json({ 
+    status: 'ok', 
+    message: 'Servidor funcionando correctamente',
+    timestamp: new Date().toISOString()
+  });
+});
 
 // Decodificar coordenadas del paquete del GPS
 function decodeLatLng(latHex, lngHex, flagHex) {
@@ -275,29 +332,111 @@ app.get('/api/velocidad', async (req, res) => {
 // Endpoints para asignaciones
 app.post('/api/asignaciones', async (req, res) => {
   try {
+    console.log('📥 POST /api/asignaciones recibido');
+    console.log('📦 Body recibido:', JSON.stringify(req.body, null, 2));
+    
     const asignaciones = Array.isArray(req.body?.asignaciones) ? req.body.asignaciones : [];
+    console.log(`📊 Número de asignaciones: ${asignaciones.length}`);
+    
     if (asignaciones.length === 0) {
+      console.log('⚠️ No se recibieron asignaciones');
       return res.status(400).json({ error: 'No se recibieron asignaciones' });
     }
 
-    // Insertar en bloque
+    // Validar estructura de datos
+    asignaciones.forEach((a, idx) => {
+      if (!a.fecha || !a.linea || !a.servicio || a.coche === undefined) {
+        console.error(`❌ Asignación ${idx} inválida:`, a);
+      }
+    });
+
+    // Primero, eliminar asignaciones existentes para la misma fecha
+    if (asignaciones.length > 0) {
+      const fechaPrimera = asignaciones[0].fecha;
+      console.log(`🗑️ Eliminando asignaciones existentes para fecha: ${fechaPrimera}`);
+      const deleteResult = await pool.query(
+        `DELETE FROM asignaciones WHERE fecha = $1`,
+        [fechaPrimera]
+      );
+      console.log(`🗑️ Filas eliminadas: ${deleteResult.rowCount}`);
+    }
+
+    // Insertar en bloque (ahora sin duplicados porque eliminamos las anteriores)
     const values = [];
     const params = [];
     asignaciones.forEach((a, idx) => {
       const base = idx * 5;
       values.push(`($${base + 1}, $${base + 2}, $${base + 3}, $${base + 4}, $${base + 5})`);
-      params.push(a.fecha, a.linea, a.servicio, a.coche, a.timestamp || new Date().toISOString());
+      
+      // Asegurar formato correcto de fecha (DATE) y timestamp
+      const fechaFormato = a.fecha || new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+      const timestampFormato = a.timestamp || new Date().toISOString(); // ISO string completo
+      
+      params.push(
+        fechaFormato, 
+        a.linea || '', 
+        a.servicio || '', 
+        parseInt(a.coche, 10), 
+        timestampFormato
+      );
+      
+      console.log(`📝 Asignación ${idx + 1}:`, {
+        fecha: fechaFormato,
+        linea: a.linea,
+        servicio: a.servicio,
+        coche: a.coche,
+        timestamp: timestampFormato
+      });
     });
 
-    await pool.query(
-      `INSERT INTO asignaciones (fecha, linea, servicio, coche, timestamp) VALUES ${values.join(', ')}`,
-      params
-    );
+    if (values.length > 0) {
+      const insertQuery = `INSERT INTO asignaciones (fecha, linea, servicio, coche, timestamp) VALUES ${values.join(', ')}`;
+      console.log('💾 Ejecutando INSERT con query:', insertQuery);
+      console.log('📋 Parámetros:', params);
+      
+      try {
+        const insertResult = await pool.query(insertQuery, params);
+        console.log(`✅ Insertadas ${insertResult.rowCount || asignaciones.length} asignaciones correctamente`);
+        
+        // Verificar que se insertaron correctamente haciendo una consulta
+        const verifyResult = await pool.query(
+          `SELECT COUNT(*) as count FROM asignaciones WHERE fecha = $1`,
+          [asignaciones[0].fecha]
+        );
+        console.log(`✅ Verificación: ${verifyResult.rows[0].count} asignaciones encontradas para la fecha`);
+      } catch (insertError) {
+        console.error('❌ Error al insertar:', insertError);
+        throw insertError; // Re-lanzar para que se maneje en el catch principal
+      }
+    } else {
+      console.warn('⚠️ No hay valores para insertar');
+    }
 
+    console.log('✅ POST /api/asignaciones exitoso');
     res.json({ ok: true, count: asignaciones.length });
   } catch (error) {
     console.error('❌ Error en POST /api/asignaciones:', error);
-    res.status(500).json({ error: 'Error al guardar asignaciones' });
+    console.error('❌ Stack trace:', error.stack);
+    console.error('❌ Detalles:', {
+      message: error.message,
+      code: error.code,
+      detail: error.detail,
+      hint: error.hint,
+      constraint: error.constraint,
+      table: error.table
+    });
+    
+    // Asegurar que siempre se envíe una respuesta
+    if (!res.headersSent) {
+      res.status(500).json({ 
+        error: 'Error al guardar asignaciones',
+        details: error.message,
+        code: error.code,
+        hint: error.hint || 'Verifique los logs del servidor para más detalles'
+      });
+    } else {
+      console.error('❌ No se pudo enviar respuesta: headers ya enviados');
+    }
   }
 });
 
@@ -345,7 +484,33 @@ app.get('/api/historial', async (req, res) => {
   }
 });
 
+// Manejo de rutas de API no encontradas (debe ir ANTES de express.static)
+app.use('/api/*', (req, res) => {
+  res.status(404).json({ 
+    error: 'Endpoint de API no encontrado',
+    path: req.path,
+    method: req.method
+  });
+});
+
+// Servir archivos estáticos (HTML, CSS, JS) - debe ir DESPUÉS de las rutas de API
+app.use(express.static(__dirname));
+
+// Manejo de rutas generales no encontradas (404)
+app.use((req, res) => {
+  if (req.path.startsWith('/api/')) {
+    res.status(404).json({ error: 'Endpoint de API no encontrado' });
+  } else {
+    res.status(404).send('Página no encontrada');
+  }
+});
+
 app.listen(HTTP_PORT, () => {
-  console.log(`✅ Servidor HTTP disponible en http://localhost:${HTTP_PORT}`);
+  console.log(`✅ Servidor HTTP disponible en puerto ${HTTP_PORT}`);
   console.log(`🗄️ Usando PostgreSQL como base de datos principal`);
+  if (process.env.DATABASE_URL) {
+    console.log(`🌐 Configuración: Servicio en la nube (Render.com)`);
+  } else {
+    console.log(`💻 Configuración: Servidor local`);
+  }
 });

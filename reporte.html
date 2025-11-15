@@ -9,23 +9,23 @@
       font-family: Arial, sans-serif;
       background: #ffd600;
       margin: 0;
-      padding: 2em;
+      padding: 1.5em;
       display: flex;
       flex-direction: column;
       align-items: center;
-      zoom: 0.55; /* 45% smaller overall (10% larger than 0.5) */
     }
 
     h1 {
       text-align: center;
       color: #2c3e50;
-      margin-bottom: 1em;
+      margin-bottom: 0.8em;
+      font-size: 1.75em;
     }
 
     table {
       border-collapse: collapse;
-      width: 90%;
-      max-width: 1300px;
+      width: 95%;
+      max-width: 2200px;
       background: white;
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
       border-radius: 12px;
@@ -33,14 +33,16 @@
     }
 
     th, td {
-      padding: 1em;
+      padding: 0.65em;
       text-align: center;
+      font-size: 0.9em;
     }
 
     th {
       background-color: #8bb3dd;
       color: white;
-      font-size: 1.1em;
+      font-size: 0.85em;
+      font-weight: bold;
     }
 
     tr:nth-child(even) {
@@ -55,9 +57,10 @@
 <body>
   <h1>Información de Unidades</h1>
   
-  <div style="margin: 2em 0; text-align: center;">
-    <label for="fechaSelector" style="font-size: 1.2em; font-weight: bold; margin-right: 1em;">Seleccionar Fecha:</label>
-    <input type="date" id="fechaSelector" style="padding: 0.5em; font-size: 1.1em; border-radius: 6px; border: 1px solid #ccc;">
+  <div style="margin: 1.2em 0; text-align: center; background: #fffbe6; padding: 0.8em; border-radius: 12px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); display: flex; align-items: center; justify-content: center; gap: 0.7em; flex-wrap: wrap;">
+    <label for="fechaSelector" style="font-size: 0.9em; font-weight: bold;">Seleccionar Fecha:</label>
+    <input type="date" id="fechaSelector" style="padding: 0.4em; font-size: 0.85em; border-radius: 6px; border: 1px solid #ccc;">
+    <button id="btnAceptar" onclick="buscarAsignaciones()" style="padding: 0.5em 1.3em; background: #2980b9; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 0.85em; font-weight: bold; box-shadow: 0 3px 6px rgba(0, 0, 0, 0.3); transition: background 0.2s; min-width: 90px;" onmouseover="this.style.background='#1f5f8b'" onmouseout="this.style.background='#2980b9'">Aceptar</button>
   </div>
   
   <table id="tablaReporte">
@@ -74,8 +77,8 @@
   </table>
 
 
-  <div style="text-align: center; margin-top: 3em;">
-    <button onclick="window.location.href='menu.html'" style="background: #8bb3dd; color: #fff; border: none; padding: 1em 2em; font-size: 1.2em; border-radius: 8px; cursor: pointer; transition: background 0.2s;">Volver al Menú</button>
+  <div style="text-align: center; margin-top: 1.2em;">
+    <button onclick="window.location.href='menu.html'" style="background: #8bb3dd; color: #fff; border: none; padding: 0.5em 1em; font-size: 0.9em; border-radius: 8px; cursor: pointer; transition: background 0.2s;">Volver al Menú</button>
   </div>
 
   <script>
@@ -111,13 +114,18 @@
       ];
 
       serviciosEspecificos.forEach(servicio => {
-        const item = datos.find(d => d.linea === servicio.linea && d.servicio === servicio.servicio);
+        const item = datos.find(d => {
+          // Normalizar los nombres de línea para la comparación
+          const lineaNormalizada = (d.linea || '').trim();
+          const servicioNormalizado = (d.servicio || '').trim();
+          return lineaNormalizada === servicio.linea && servicioNormalizado === servicio.servicio;
+        });
         const fila = document.createElement("tr");
         
-        if (item) {
+        if (item && item.coche) {
           fila.innerHTML = `
             <td>${item.linea}</td>
-            <td>${item.coche}</td>
+            <td>Coche ${item.coche}</td>
             <td>${item.km || '—'}</td>
           `;
         } else {
@@ -131,14 +139,17 @@
       });
     }
 
-
-    document.getElementById('fechaSelector').addEventListener('change', function() {
-      const fechaSeleccionada = this.value;
+    // Función para buscar asignaciones cuando se presiona Aceptar
+    function buscarAsignaciones() {
+      const fechaSeleccionada = document.getElementById('fechaSelector').value;
       if (fechaSeleccionada) {
         cargarDatos(fechaSeleccionada);
+      } else {
+        alert('Por favor seleccione una fecha');
       }
-    });
+    }
 
+    // Cargar datos al iniciar con fecha actual
     cargarDatos(new Date().toISOString().split('T')[0]);
   </script>
 </body>
